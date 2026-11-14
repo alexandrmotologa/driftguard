@@ -1,0 +1,37 @@
+version: "1"
+
+server:
+  listen: ":8080"
+  sqlite_path: "./driftguard.db"
+  eval_interval_sec: 15
+  sse_keepalive_sec: 15
+
+workflows:
+  - id: "customer-refund-agent"
+    name: "Customer Refund Automation"
+    rolling_window_runs: 50
+    
+    baseline:
+      expected_steps_mean: 3.8
+      expected_steps_std: 1.1
+      max_allowed_wasserstein_distance: 1.8
+      max_tool_transition_drift: 0.15
+      max_loop_probability: 0.20
+
+    tools_monitored:
+      - "lookup_order"
+      - "check_fraud_score"
+      - "execute_refund"
+      - "send_confirmation_email"
+
+    forbidden_transitions:
+      - from: "lookup_order"
+        to: "execute_refund"
+
+alerting:
+  slack:
+    webhook_url: ""
+    channel: "#ai-reliability-alerts"
+  pagerduty:
+    routing_key: ""
+    severity: "error"

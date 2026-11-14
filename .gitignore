@@ -1,0 +1,46 @@
+# Binaries
+bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/driftguard
+
+# Architecture specific binaries
+*.test
+*.out
+
+# Databases and local state
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+/driftguard.db
+
+# Go dependencies and cache
+vendor/
+
+# Node dependencies and build
+node_modules/
+web/.vite/
+*.tsbuildinfo
+.npm
+package-lock.json.bak
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test reports and outputs
+coverage.txt
+coverage.html
+drift_report.html
+drift_report.json

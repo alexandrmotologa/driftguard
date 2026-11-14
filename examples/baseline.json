@@ -1,0 +1,179 @@
+{
+  "workflow_id": "customer-refund-agent",
+  "expected_steps_mean": 4,
+  "expected_steps_std": 0,
+  "step_samples": [
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4
+  ],
+  "markov_matrix": {
+    "states": [
+      "__END__",
+      "__START__",
+      "check_fraud_score",
+      "execute_refund",
+      "lookup_order",
+      "send_confirmation_email"
+    ],
+    "probabilities": {
+      "__END__": {
+        "__END__": 0.16666666666666666,
+        "__START__": 0.16666666666666666,
+        "check_fraud_score": 0.16666666666666666,
+        "execute_refund": 0.16666666666666666,
+        "lookup_order": 0.16666666666666666,
+        "send_confirmation_email": 0.16666666666666666
+      },
+      "__START__": {
+        "__END__": 0.0002,
+        "__START__": 0.0002,
+        "check_fraud_score": 0.0002,
+        "execute_refund": 0.0002,
+        "lookup_order": 0.999,
+        "send_confirmation_email": 0.0002
+      },
+      "check_fraud_score": {
+        "__END__": 0.0002,
+        "__START__": 0.0002,
+        "check_fraud_score": 0.0002,
+        "execute_refund": 0.999,
+        "lookup_order": 0.0002,
+        "send_confirmation_email": 0.0002
+      },
+      "execute_refund": {
+        "__END__": 0.0002,
+        "__START__": 0.0002,
+        "check_fraud_score": 0.0002,
+        "execute_refund": 0.0002,
+        "lookup_order": 0.0002,
+        "send_confirmation_email": 0.999
+      },
+      "lookup_order": {
+        "__END__": 0.0002,
+        "__START__": 0.0002,
+        "check_fraud_score": 0.999,
+        "execute_refund": 0.0002,
+        "lookup_order": 0.0002,
+        "send_confirmation_email": 0.0002
+      },
+      "send_confirmation_email": {
+        "__END__": 0.999,
+        "__START__": 0.0002,
+        "check_fraud_score": 0.0002,
+        "execute_refund": 0.0002,
+        "lookup_order": 0.0002,
+        "send_confirmation_email": 0.0002
+      }
+    },
+    "raw_counts": {
+      "__END__": {
+        "__END__": 0,
+        "__START__": 0,
+        "check_fraud_score": 0,
+        "execute_refund": 0,
+        "lookup_order": 0,
+        "send_confirmation_email": 0
+      },
+      "__START__": {
+        "__END__": 0,
+        "__START__": 0,
+        "check_fraud_score": 0,
+        "execute_refund": 0,
+        "lookup_order": 50,
+        "send_confirmation_email": 0
+      },
+      "check_fraud_score": {
+        "__END__": 0,
+        "__START__": 0,
+        "check_fraud_score": 0,
+        "execute_refund": 50,
+        "lookup_order": 0,
+        "send_confirmation_email": 0
+      },
+      "execute_refund": {
+        "__END__": 0,
+        "__START__": 0,
+        "check_fraud_score": 0,
+        "execute_refund": 0,
+        "lookup_order": 0,
+        "send_confirmation_email": 50
+      },
+      "lookup_order": {
+        "__END__": 0,
+        "__START__": 0,
+        "check_fraud_score": 50,
+        "execute_refund": 0,
+        "lookup_order": 0,
+        "send_confirmation_email": 0
+      },
+      "send_confirmation_email": {
+        "__END__": 50,
+        "__START__": 0,
+        "check_fraud_score": 0,
+        "execute_refund": 0,
+        "lookup_order": 0,
+        "send_confirmation_email": 0
+      }
+    },
+    "total_transitions": 250
+  },
+  "monitored_tools": [
+    "execute_refund",
+    "send_confirmation_email",
+    "lookup_order",
+    "check_fraud_score"
+  ],
+  "max_allowed_wasserstein_distance": 1.8,
+  "max_tool_transition_drift": 0.15,
+  "max_loop_probability": 0.2,
+  "updated_at": "2026-11-14T19:29:02.7096535Z",
+  "sample_count": 50
+}
