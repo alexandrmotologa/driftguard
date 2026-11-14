@@ -1,14 +1,17 @@
 import React from 'react';
-import { ShieldAlert, Zap, RefreshCw, Radio } from 'lucide-react';
-import { WorkflowSummary } from '../types';
+import { ShieldAlert, Zap, RefreshCw, Radio, Terminal, Power } from 'lucide-react';
+import { WorkflowSummary, CircuitBreakerStatus } from '../types';
 
 interface HeaderProps {
   workflows: WorkflowSummary[];
   selectedWorkflowId: string;
   onSelectWorkflow: (id: string) => void;
   sseConnected: boolean;
+  circuitBreaker?: CircuitBreakerStatus;
+  onResetCircuitBreaker: () => void;
   onOpenSimulate: () => void;
   onOpenRecalibrate: () => void;
+  onOpenSandbox: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,9 +19,14 @@ export const Header: React.FC<HeaderProps> = ({
   selectedWorkflowId,
   onSelectWorkflow,
   sseConnected,
+  circuitBreaker,
+  onResetCircuitBreaker,
   onOpenSimulate,
   onOpenRecalibrate,
+  onOpenSandbox,
 }) => {
+  const isBreakerOpen = circuitBreaker?.state === 'OPEN';
+
   return (
     <header className="border-b border-sre-800 bg-sre-900/80 backdrop-blur sticky top-0 z-30 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
@@ -55,6 +63,33 @@ export const Header: React.FC<HeaderProps> = ({
           </select>
         </div>
 
+        {/* Circuit Breaker Status */}
+        {circuitBreaker && (
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition ${
+              isBreakerOpen
+                ? 'bg-rose-950/50 border-rose-700 text-rose-300'
+                : 'bg-sre-850 border-sre-700/60 text-slate-300'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isBreakerOpen ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'
+              }`}
+            />
+            <span>CB: {circuitBreaker.state}</span>
+            {isBreakerOpen && (
+              <button
+                onClick={onResetCircuitBreaker}
+                className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold transition"
+                title="Reset Circuit Breaker"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        )}
+
         {/* SSE Stream Status */}
         <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-sre-800 bg-sre-850/60 text-xs">
           <Radio className={`w-3.5 h-3.5 ${sseConnected ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
@@ -62,6 +97,16 @@ export const Header: React.FC<HeaderProps> = ({
             {sseConnected ? 'LIVE SSE' : 'OFFLINE'}
           </span>
         </div>
+
+        {/* Trace Sandbox Button */}
+        <button
+          onClick={onOpenSandbox}
+          className="flex items-center gap-1.5 bg-sre-800 hover:bg-sre-700 border border-sre-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer"
+          title="Open Ad-Hoc Trace Testing Sandbox"
+        >
+          <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Sandbox</span>
+        </button>
 
         {/* Action Buttons */}
         <button

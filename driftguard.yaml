@@ -28,6 +28,12 @@ workflows:
       - from: "lookup_order"
         to: "execute_refund"
 
+    circuit_breaker:
+      enabled: true
+      critical_consecutive_runs: 3
+      fallback_webhook: ""
+      fallback_payload: '{"workflow": "customer-refund-agent", "action": "pin_stable_version"}'
+
   - id: "incident-triage-agent"
     name: "SRE Incident Triage Agent"
     rolling_window_runs: 50

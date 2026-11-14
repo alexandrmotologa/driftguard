@@ -108,4 +108,32 @@ func TestAPIRoutes(t *testing.T) {
 	if countAfter != 6 {
 		t.Errorf("expected 6 traces, got %d", countAfter)
 	}
+
+	// Test Prometheus metrics endpoint
+	reqMet := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	wMet := httptest.NewRecorder()
+	srv.metrics.Handler().ServeHTTP(wMet, reqMet)
+	if wMet.Code != http.StatusOK {
+		t.Errorf("expected 200 for /metrics, got %d", wMet.Code)
+	}
+	if !bytes.Contains(wMet.Body.Bytes(), []byte("driftguard_traces_total")) {
+		t.Errorf("expected driftguard_traces_total in prometheus output")
+	}
+
+	// Test ad-hoc test-trace sandbox endpoint
+	testTr := model.Trace{
+		TraceID: "tr-test-sandbox",
+		Steps: []model.TraceStep{
+			{StepIndex: 1, ToolName: "lookup"},
+			{StepIndex: 2, ToolName: "refund"},
+		},
+	}
+	testBody, _ := json.Marshal(testTr)
+	reqTest := httptest.NewRequest(http.MethodPost, "/api/v1/workflows/customer-refund-agent/test-trace", bytes.NewReader(testBody))
+	reqTest.SetPathValue("id", "customer-refund-agent")
+	wTest := httptest.NewRecorder()
+	srv.handleTestTrace(wTest, reqTest)
+	if wTest.Code != http.StatusOK {
+		t.Errorf("expected 200 for test-trace, got %d", wTest.Code)
+	}
 }

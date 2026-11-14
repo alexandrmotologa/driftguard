@@ -1,15 +1,17 @@
 import React from 'react';
 import { Incident } from '../types';
-import { AlertOctagon, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, CheckCircle2, ArrowRight, GitCompare } from 'lucide-react';
 
 interface IncidentFeedProps {
   incidents: Incident[];
   onAcknowledge: (id: string) => void;
+  onInspectDiff?: (traceId: string) => void;
 }
 
 export const IncidentFeed: React.FC<IncidentFeedProps> = ({
   incidents,
   onAcknowledge,
+  onInspectDiff,
 }) => {
   return (
     <div className="bg-sre-900 border border-sre-800 rounded-xl p-5 flex flex-col h-full">
@@ -80,6 +82,18 @@ export const IncidentFeed: React.FC<IncidentFeedProps> = ({
               <p className="text-xs text-slate-200 mt-2 font-medium">
                 {inc.summary}
               </p>
+
+              {inc.trace_ids && inc.trace_ids.length > 0 && onInspectDiff && (
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    onClick={() => onInspectDiff(inc.trace_ids![0])}
+                    className="text-[10px] text-purple-400 hover:text-purple-300 font-mono inline-flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <GitCompare className="w-3 h-3" />
+                    <span>Diff Offending Trajectory</span>
+                  </button>
+                </div>
+              )}
 
               {inc.offending_transitions && inc.offending_transitions.length > 0 && (
                 <div className="mt-2.5 pt-2 border-t border-sre-800/80 flex flex-wrap items-center gap-1.5 text-[11px] font-mono">

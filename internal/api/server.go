@@ -11,8 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alexandrmotologa/driftguard/internal/circuitbreaker"
 	"github.com/alexandrmotologa/driftguard/internal/config"
+	"github.com/alexandrmotologa/driftguard/internal/diff"
 	"github.com/alexandrmotologa/driftguard/internal/ingest"
+	"github.com/alexandrmotologa/driftguard/internal/metrics"
 	"github.com/alexandrmotologa/driftguard/internal/model"
 	"github.com/alexandrmotologa/driftguard/internal/notify"
 	"github.com/alexandrmotologa/driftguard/internal/sentinel"
@@ -29,12 +32,27 @@ type Server struct {
 	staticFS   fs.FS
 	httpServer *http.Server
 	sim        *simulator.Generator
+	metrics    *metrics.Registry
+	breakers   map[string]*circuitbreaker.Breaker
 
 	evalMu sync.Mutex
 }
 
 // NewServer initializes a new Server.
 func NewServer(cfg *config.Config, db *store.DB, staticFS fs.FS) *Server {
+	reg := metrics.NewRegistry()
+	breakers := make(map[string]*circuitbreaker.Breaker)
+	for _, wf := range cfg.Workflows {
+		cbCfg := circuitbreaker.Config{
+			Enabled:                 wf.CircuitBreaker.Enabled,
+			CriticalConsecutiveRuns: wf.CircuitBreaker.CriticalConsecutiveRuns,
+			FallbackWebhook:         wf.CircuitBreaker.FallbackWebhook,
+			FallbackPayload:         wf.CircuitBreaker.FallbackPayload,
+		}
+		breakers[wf.ID] = circuitbreaker.NewBreaker(wf.ID, cbCfg)
+		reg.SetCircuitBreakerState(wf.ID, 0)
+	}
+
 	return &Server{
 		cfg:        cfg,
 		db:         db,
@@ -42,6 +60,8 @@ func NewServer(cfg *config.Config, db *store.DB, staticFS fs.FS) *Server {
 		dispatcher: notify.NewDispatcher(cfg.Alerting),
 		staticFS:   staticFS,
 		sim:        simulator.NewGenerator(0),
+		metrics:    reg,
+		breakers:   breakers,
 	}
 }
 
@@ -54,6 +74,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/traces/batch", s.handleIngestTraceBatch)
 	mux.HandleFunc("POST /v1/traces", s.handleIngestOTelTraces)
 
+	// Prometheus metrics
+	mux.HandleFunc("GET /metrics", s.metrics.Handler())
+
 	// Workflows, Baselines, and Metrics
 	mux.HandleFunc("GET /api/v1/workflows", s.handleGetWorkflows)
 	mux.HandleFunc("GET /api/v1/workflows/{id}/baseline", s.handleGetBaseline)
@@ -61,8 +84,17 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/workflows/{id}/traces", s.handleGetTraces)
 	mux.HandleFunc("GET /api/v1/workflows/{id}/metrics", s.handleGetMetrics)
 	mux.HandleFunc("GET /api/v1/workflows/{id}/evaluations", s.handleGetEvaluations)
+	mux.HandleFunc("GET /api/v1/workflows/{id}/evaluations/timeline", s.handleGetEvaluationsTimeline)
 	mux.HandleFunc("GET /api/v1/workflows/{id}/incidents", s.handleGetIncidents)
 	mux.HandleFunc("POST /api/v1/incidents/{id}/ack", s.handleAckIncident)
+
+	// Circuit breaker endpoints
+	mux.HandleFunc("GET /api/v1/workflows/{id}/circuit-breaker", s.handleGetCircuitBreaker)
+	mux.HandleFunc("POST /api/v1/workflows/{id}/circuit-breaker/reset", s.handleResetCircuitBreaker)
+
+	// Ad-hoc trace testing sandbox & diff
+	mux.HandleFunc("POST /api/v1/workflows/{id}/test-trace", s.handleTestTrace)
+	mux.HandleFunc("GET /api/v1/workflows/{id}/traces/{traceId}/diff", s.handleGetTraceDiff)
 
 	// Simulation trigger
 	mux.HandleFunc("POST /api/v1/simulate", s.handleSimulateTraffic)
@@ -150,6 +182,7 @@ func (s *Server) handleIngestSingleTrace(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	s.metrics.RecordTrace(tr.WorkflowID)
 	s.hub.Broadcast("trace_ingested", tr)
 
 	// Trigger async evaluation check
@@ -175,6 +208,7 @@ func (s *Server) handleIngestTraceBatch(w http.ResponseWriter, r *http.Request) 
 
 	workflows := make(map[string]struct{})
 	for _, tr := range traces {
+		s.metrics.RecordTrace(tr.WorkflowID)
 		workflows[tr.WorkflowID] = struct{}{}
 	}
 	for wf := range workflows {
@@ -200,6 +234,7 @@ func (s *Server) handleIngestOTelTraces(w http.ResponseWriter, r *http.Request) 
 	s.hub.Broadcast("trace_batch_ingested", map[string]any{"count": len(traces)})
 
 	for _, tr := range traces {
+		s.metrics.RecordTrace(tr.WorkflowID)
 		go s.evaluateWorkflowAsync(tr.WorkflowID)
 	}
 
@@ -208,15 +243,16 @@ func (s *Server) handleIngestOTelTraces(w http.ResponseWriter, r *http.Request) 
 }
 
 type WorkflowStatusSummary struct {
-	ID                 string                  `json:"id"`
-	Name               string                  `json:"name"`
-	Status             string                  `json:"status"` // NORMAL, WARNING, CRITICAL
-	TraceCount         int                     `json:"trace_count"`
-	WassersteinDist    float64                 `json:"wasserstein_distance"`
-	MatrixDrift        float64                 `json:"matrix_drift"`
-	LatestEvaluation   *model.EvaluationResult `json:"latest_evaluation,omitempty"`
-	LatestIncident     *model.Incident         `json:"latest_incident,omitempty"`
-	ConfiguredBaseline bool                    `json:"configured_baseline"`
+	ID                 string                        `json:"id"`
+	Name               string                        `json:"name"`
+	Status             string                        `json:"status"` // NORMAL, WARNING, CRITICAL
+	TraceCount         int                           `json:"trace_count"`
+	WassersteinDist    float64                       `json:"wasserstein_distance"`
+	MatrixDrift        float64                       `json:"matrix_drift"`
+	LatestEvaluation   *model.EvaluationResult       `json:"latest_evaluation,omitempty"`
+	LatestIncident     *model.Incident               `json:"latest_incident,omitempty"`
+	ConfiguredBaseline bool                          `json:"configured_baseline"`
+	CircuitBreaker     circuitbreaker.BreakerStatus  `json:"circuit_breaker"`
 }
 
 func (s *Server) handleGetWorkflows(w http.ResponseWriter, r *http.Request) {
@@ -248,6 +284,11 @@ func (s *Server) handleGetWorkflows(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		var cbStatus circuitbreaker.BreakerStatus
+		if cb, ok := s.breakers[wf.ID]; ok {
+			cbStatus = cb.Status()
+		}
+
 		summaries = append(summaries, WorkflowStatusSummary{
 			ID:                 wf.ID,
 			Name:               wf.Name,
@@ -258,6 +299,7 @@ func (s *Server) handleGetWorkflows(w http.ResponseWriter, r *http.Request) {
 			LatestEvaluation:   latestEval,
 			LatestIncident:     latestInc,
 			ConfiguredBaseline: baseline != nil,
+			CircuitBreaker:     cbStatus,
 		})
 	}
 
@@ -399,6 +441,182 @@ func (s *Server) handleAckIncident(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"acknowledged": true})
 }
 
+func (s *Server) handleGetCircuitBreaker(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	cb, ok := s.breakers[id]
+	if !ok {
+		http.Error(w, "workflow not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cb.Status())
+}
+
+func (s *Server) handleResetCircuitBreaker(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	cb, ok := s.breakers[id]
+	if !ok {
+		http.Error(w, "workflow not found", http.StatusNotFound)
+		return
+	}
+
+	cb.Reset()
+	s.metrics.SetCircuitBreakerState(id, 0)
+	s.hub.Broadcast("circuit_breaker_reset", map[string]string{"workflow_id": id})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cb.Status())
+}
+
+type TestTraceResponse struct {
+	Trace          model.Trace            `json:"trace"`
+	TrajectoryDiff diff.TrajectoryDiff    `json:"trajectory_diff"`
+	Evaluation     model.EvaluationResult `json:"evaluation"`
+	Status         string                 `json:"status"` // PASS or FAIL
+}
+
+func (s *Server) handleTestTrace(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	tr, err := ingest.ParseSingleTrace(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid trace: %v", err), http.StatusBadRequest)
+		return
+	}
+	tr.WorkflowID = id
+
+	var wfCfg *config.WorkflowConfig
+	for i := range s.cfg.Workflows {
+		if s.cfg.Workflows[i].ID == id {
+			wfCfg = &s.cfg.Workflows[i]
+			break
+		}
+	}
+
+	baseline, _ := s.db.GetBaseline(r.Context(), id)
+	eval, _ := sentinel.EvaluateWindow(id, []model.Trace{*tr}, baseline, wfCfg)
+
+	// Build forbidden map
+	forbiddenMap := make(map[string]string)
+	if wfCfg != nil {
+		for _, f := range wfCfg.ForbiddenTransitions {
+			forbiddenMap[f.From] = f.To
+		}
+	}
+
+	var canonical []string
+	if baseline != nil && len(baseline.MonitoredTools) > 0 {
+		canonical = baseline.MonitoredTools
+	} else if wfCfg != nil {
+		canonical = wfCfg.ToolsMonitored
+	}
+
+	tDiff := diff.ComputeTrajectoryDiff(*tr, canonical, forbiddenMap)
+
+	status := "PASS"
+	if eval.Status != "NORMAL" || tDiff.HasGuardrailBypass || tDiff.LoopCount > 0 {
+		status = "FAIL"
+	}
+
+	resp := TestTraceResponse{
+		Trace:          *tr,
+		TrajectoryDiff: tDiff,
+		Evaluation:     eval,
+		Status:         status,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) handleGetTraceDiff(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	traceID := r.PathValue("traceId")
+
+	traces, err := s.db.GetRecentTraces(r.Context(), id, 200)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var targetTrace *model.Trace
+	for i := range traces {
+		if traces[i].TraceID == traceID {
+			targetTrace = &traces[i]
+			break
+		}
+	}
+
+	if targetTrace == nil {
+		http.Error(w, "trace not found", http.StatusNotFound)
+		return
+	}
+
+	var wfCfg *config.WorkflowConfig
+	for i := range s.cfg.Workflows {
+		if s.cfg.Workflows[i].ID == id {
+			wfCfg = &s.cfg.Workflows[i]
+			break
+		}
+	}
+
+	baseline, _ := s.db.GetBaseline(r.Context(), id)
+	forbiddenMap := make(map[string]string)
+	if wfCfg != nil {
+		for _, f := range wfCfg.ForbiddenTransitions {
+			forbiddenMap[f.From] = f.To
+		}
+	}
+
+	var canonical []string
+	if baseline != nil && len(baseline.MonitoredTools) > 0 {
+		canonical = baseline.MonitoredTools
+	} else if wfCfg != nil {
+		canonical = wfCfg.ToolsMonitored
+	}
+
+	tDiff := diff.ComputeTrajectoryDiff(*targetTrace, canonical, forbiddenMap)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tDiff)
+}
+
+type TimelinePoint struct {
+	Timestamp           time.Time `json:"timestamp"`
+	WassersteinDistance float64   `json:"wasserstein_distance"`
+	MicroWasserstein    float64   `json:"micro_wasserstein"`
+	MatrixDrift         float64   `json:"matrix_drift"`
+	StepMean            float64   `json:"step_mean"`
+	Status              string    `json:"status"`
+}
+
+func (s *Server) handleGetEvaluationsTimeline(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	evals, err := s.db.GetRecentEvaluations(r.Context(), id, 50)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Reverse to chronological order
+	timeline := make([]TimelinePoint, len(evals))
+	for i := range evals {
+		idx := len(evals) - 1 - i
+		ev := evals[idx]
+		timeline[i] = TimelinePoint{
+			Timestamp:           ev.Timestamp,
+			WassersteinDistance: ev.WassersteinDistance,
+			MicroWasserstein:    ev.MicroWasserstein,
+			MatrixDrift:         ev.MatrixDeviation.MeanAbsDeviation,
+			StepMean:            ev.StepMean,
+			Status:              ev.Status,
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(timeline)
+}
+
 type SimulateRequest struct {
 	WorkflowID string `json:"workflow_id"`
 	Scenario   string `json:"scenario"` // clean, loop, bypass, hallucinate
@@ -462,12 +680,26 @@ func (s *Server) evaluateWorkflowAsync(workflowID string) {
 	}
 
 	_ = s.db.SaveEvaluation(ctx, *eval)
+	s.metrics.RecordEvaluation(*eval)
 	s.hub.Broadcast("evaluation_completed", eval)
 
 	if inc != nil {
 		_ = s.db.SaveIncident(ctx, *inc)
+		s.metrics.RecordIncident(*inc)
 		s.hub.Broadcast("incident_triggered", inc)
 		s.dispatcher.Dispatch(ctx, *inc)
+	}
+
+	if cb, ok := s.breakers[workflowID]; ok {
+		tripped, _ := cb.RecordEvaluation(ctx, *eval)
+		stateNum := 0
+		if cb.Status().State == circuitbreaker.StateOpen {
+			stateNum = 1
+		}
+		s.metrics.SetCircuitBreakerState(workflowID, stateNum)
+		if tripped {
+			s.hub.Broadcast("circuit_breaker_tripped", cb.Status())
+		}
 	}
 }
 

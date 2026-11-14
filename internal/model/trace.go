@@ -111,6 +111,8 @@ type EvaluationResult struct {
 	Timestamp           time.Time          `json:"timestamp"`
 	WindowSize          int                `json:"window_size"`
 	WassersteinDistance float64            `json:"wasserstein_distance"`
+	MicroWasserstein    float64            `json:"micro_wasserstein,omitempty"`
+	MacroWasserstein    float64            `json:"macro_wasserstein,omitempty"`
 	StepMean            float64            `json:"step_mean"`
 	StepStd             float64            `json:"step_std"`
 	StepHistogram       []HistogramBin     `json:"step_histogram,omitempty"`

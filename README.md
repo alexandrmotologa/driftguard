@@ -59,7 +59,13 @@ Traditional application monitoring systems inspect server CPU and HTTP status co
 
 - **Lightweight Go Runtime**: Single static binary requiring under 25MB of resident memory.
 - **1D Wasserstein Distance**: Quantifies step distribution shifts between baseline and rolling windows through exact numerical integration.
+- **Dual-Window Trajectory Evaluation**: Evaluates micro-windows (immediate rapid regression) and macro-windows (creeping long-term drift) concurrently.
 - **Markov Tool Transition Modeling**: Builds empirical transition matrices $P(T_j \mid T_i)$ to identify novel paths, cycle intensity, and probability perturbations.
+- **Automated Circuit Breaker & Rollback Webhook**: Trips automatically when consecutive critical regressions occur, firing an automated fallback webhook to switch model checkpoints or engage safety proxies.
+- **Visual Trajectory Diff Engine**: Produces step-by-step differential traces comparing observed agent execution against canonical baseline trajectories.
+- **Interactive Directed Tool DAG**: Renders state topology graphs alongside transition heatmaps for intuitive path inspection.
+- **Native Prometheus Exporter**: Exposes OpenMetrics at `GET /metrics` for Grafana, Datadog, and Prometheus Alertmanager integration.
+- **Ad-Hoc Trace Testing Sandbox**: In-browser trace validator allowing SREs to test candidate traces against baselines before deployment.
 - **Deterministic Guardrail Rules**: Enforces strict sequence requirements, preventing agents from skipping validation tools.
 - **Real-Time Embedded Cockpit**: React 19 interface embedded directly into the Go binary via `embed.FS` with live Server-Sent Events (SSE).
 - **Multi-Protocol Ingestion**: Native OpenTelemetry trace endpoint (`/v1/traces`) and low-overhead JSON webhook endpoints (`/api/v1/traces`).
@@ -110,6 +116,12 @@ workflows:
     forbidden_transitions:
       - from: "lookup_order"
         to: "execute_refund" # Must evaluate check_fraud_score first
+
+    circuit_breaker:
+      enabled: true
+      critical_consecutive_runs: 3
+      fallback_webhook: "https://gateway.internal/api/v1/switch-checkpoint"
+      fallback_payload: '{"workflow": "customer-refund-agent", "action": "pin_stable_version"}'
 
 alerting:
   slack:

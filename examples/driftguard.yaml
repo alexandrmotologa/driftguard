@@ -28,6 +28,12 @@ workflows:
       - from: "lookup_order"
         to: "execute_refund"
 
+    circuit_breaker:
+      enabled: true
+      critical_consecutive_runs: 3
+      fallback_webhook: ""
+      fallback_payload: '{"workflow": "customer-refund-agent", "action": "pin_stable_version"}'
+
 alerting:
   slack:
     webhook_url: ""

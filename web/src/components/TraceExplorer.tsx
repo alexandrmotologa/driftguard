@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Trace, TraceStep } from '../types';
-import { Activity, ArrowRight, X, Clock, Layers, Sparkles } from 'lucide-react';
+import { Activity, ArrowRight, X, Clock, Layers, Sparkles, GitCompare } from 'lucide-react';
 
 interface TraceExplorerProps {
   traces: Trace[];
+  onInspectDiff?: (traceId: string) => void;
 }
 
-export const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
+export const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces, onInspectDiff }) => {
   const [selectedTrace, setSelectedTrace] = useState<Trace | null>(null);
 
   return (
@@ -37,12 +38,13 @@ export const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
               <th className="py-2.5 px-3">Latency</th>
               <th className="py-2.5 px-3">Tokens</th>
               <th className="py-2.5 px-3">Timestamp</th>
+              <th className="py-2.5 px-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-sre-800/60 font-mono">
             {traces.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-500">
+                <td colSpan={8} className="py-8 text-center text-slate-500">
                   No trace executions recorded yet.
                 </td>
               </tr>
@@ -95,6 +97,21 @@ export const TraceExplorer: React.FC<TraceExplorerProps> = ({ traces }) => {
                   </td>
                   <td className="py-2.5 px-3 text-slate-500">
                     {new Date(tr.timestamp).toLocaleTimeString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-right">
+                    {onInspectDiff && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onInspectDiff(tr.trace_id);
+                        }}
+                        className="px-2 py-0.5 rounded bg-sre-800 hover:bg-purple-900/50 hover:text-purple-300 border border-sre-700 text-slate-300 text-[10px] inline-flex items-center gap-1 transition"
+                        title="Diff this trace against baseline"
+                      >
+                        <GitCompare className="w-3 h-3" />
+                        <span>Diff</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

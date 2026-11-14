@@ -75,9 +75,20 @@ func EvaluateWindow(
 		baseSamples = currStepCounts
 	}
 
-	// 3. Compute 1D Wasserstein distance
+	// 3. Compute 1D Wasserstein distance (macro window and micro window)
 	wassersteinDist := stats.ComputeWasserstein1D(baseSamples, currStepCounts)
 	wassersteinDist = math.Round(wassersteinDist*1000) / 1000
+
+	microN := 15
+	if cfg != nil && cfg.MicroWindowRuns > 0 {
+		microN = cfg.MicroWindowRuns
+	}
+	if microN > len(currStepCounts) {
+		microN = len(currStepCounts)
+	}
+	microSamples := currStepCounts[len(currStepCounts)-microN:]
+	microWasserstein := stats.ComputeWasserstein1D(baseSamples, microSamples)
+	microWasserstein = math.Round(microWasserstein*1000) / 1000
 
 	// 4. Markov matrix transition analysis
 	var monitoredTools []string
@@ -189,6 +200,8 @@ func EvaluateWindow(
 		Timestamp:           now,
 		WindowSize:          len(traces),
 		WassersteinDistance: wassersteinDist,
+		MicroWasserstein:    microWasserstein,
+		MacroWasserstein:    wassersteinDist,
 		StepMean:            stepStats.Mean,
 		StepStd:             stepStats.Std,
 		StepHistogram:       histogram,

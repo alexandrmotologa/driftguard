@@ -30,10 +30,21 @@ type WorkflowConfig struct {
 	ID                   string                 `yaml:"id"`
 	Name                 string                 `yaml:"name"`
 	RollingWindowRuns    int                    `yaml:"rolling_window_runs"`
+	MicroWindowRuns      int                    `yaml:"micro_window_runs,omitempty"`
+	MacroWindowRuns      int                    `yaml:"macro_window_runs,omitempty"`
 	Baseline             BaselineConfig         `yaml:"baseline"`
 	ToolsMonitored       []string               `yaml:"tools_monitored"`
 	ForbiddenTransitions []ForbiddenTransition  `yaml:"forbidden_transitions"`
 	RequiredTools        []string               `yaml:"required_tools,omitempty"`
+	CircuitBreaker       CircuitBreakerConfig   `yaml:"circuit_breaker,omitempty"`
+}
+
+// CircuitBreakerConfig defines automated rollback thresholds.
+type CircuitBreakerConfig struct {
+	Enabled                 bool   `yaml:"enabled" json:"enabled"`
+	CriticalConsecutiveRuns int    `yaml:"critical_consecutive_runs" json:"critical_consecutive_runs"`
+	FallbackWebhook         string `yaml:"fallback_webhook" json:"fallback_webhook"`
+	FallbackPayload         string `yaml:"fallback_payload" json:"fallback_payload"`
 }
 
 // BaselineConfig defines the golden baseline statistical thresholds.
@@ -101,6 +112,15 @@ func LoadConfig(path string) (*Config, error) {
 		wf := &cfg.Workflows[i]
 		if wf.RollingWindowRuns <= 0 {
 			wf.RollingWindowRuns = 50
+		}
+		if wf.MicroWindowRuns <= 0 {
+			wf.MicroWindowRuns = 15
+		}
+		if wf.MacroWindowRuns <= 0 {
+			wf.MacroWindowRuns = 100
+		}
+		if wf.CircuitBreaker.CriticalConsecutiveRuns <= 0 {
+			wf.CircuitBreaker.CriticalConsecutiveRuns = 2
 		}
 		if wf.Baseline.MaxAllowedWassersteinDist <= 0 {
 			wf.Baseline.MaxAllowedWassersteinDist = 2.0
