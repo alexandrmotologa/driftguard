@@ -1,6 +1,26 @@
-# driftguard
+<p align="center">
+  <img src="docs/images/logo.png?raw=true" alt="DriftGuard Logo" width="130" style="border-radius: 24px;" />
+</p>
 
-Real-time trajectory divergence sentinel and reasoning drift detector for production AI agents.
+<h1 align="center">driftguard</h1>
+
+<p align="center">
+  <a href="https://github.com/alexandrmotologa/driftguard/actions"><img src="https://img.shields.io/github/actions/workflow/status/alexandrmotologa/driftguard/ci.yml?branch=main&style=flat-square&label=CI%20Build" alt="CI Build" /></a>
+  <a href="https://golang.org"><img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go" alt="Go Version" /></a>
+  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react" alt="React 19" /></a>
+  <a href="https://opentelemetry.io"><img src="https://img.shields.io/badge/OTel-Compliant-F5A800?style=flat-square&logo=opentelemetry" alt="OpenTelemetry" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License" /></a>
+</p>
+
+<p align="center">
+  <strong>Real-time trajectory divergence sentinel and reasoning drift detector for production AI agents.</strong>
+</p>
+
+<p align="center">
+  <img src="docs/images/driftguard_demo.gif?raw=true" alt="DriftGuard Live Demo" width="850" />
+</p>
+
+---
 
 driftguard is a standalone Go daemon and embedded React 19 SRE cockpit that monitors autonomous language model agents. It ingests execution traces in real time, compares current trajectories against a verified Golden Baseline using 1D Wasserstein distance and Markov tool transition matrices, and alerts SRE teams on Slack and PagerDuty before behavioral regressions reach end users.
 
@@ -14,6 +34,30 @@ Autonomous agents frequently degrade after silent model checkpoint updates, prom
 - Increased step variance causing elevated latency and operational costs.
 
 Traditional application monitoring systems inspect server CPU and HTTP status codes, leaving silent reasoning regressions invisible until customer complaints arrive. driftguard provides statistical behavioral monitoring at the trajectory layer.
+
+## Live SRE Cockpit
+
+driftguard provides an interactive real-time observability cockpit embedded directly into the Go daemon:
+
+<p align="center">
+  <img src="docs/images/driftguard_dashboard.png?raw=true" alt="DriftGuard Desktop Dashboard" width="900" />
+</p>
+
+### Visual Trajectory Differential Inspector
+
+When behavioral regressions or policy violations occur, SREs can inspect step-by-step diff alignments:
+
+<p align="center">
+  <img src="docs/images/driftguard_diff_modal.png?raw=true" alt="DriftGuard Trajectory Diff Inspector" width="700" />
+</p>
+
+### Responsive Interface
+
+The cockpit adapts across desktop workstations, tablets, and on-call mobile viewports:
+
+<p align="center">
+  <img src="docs/images/driftguard_mobile.png?raw=true" alt="DriftGuard Mobile Viewport" width="340" />
+</p>
 
 ## Architecture
 
@@ -61,7 +105,7 @@ Traditional application monitoring systems inspect server CPU and HTTP status co
 - **1D Wasserstein Distance**: Quantifies step distribution shifts between baseline and rolling windows through exact numerical integration.
 - **Dual-Window Trajectory Evaluation**: Evaluates micro-windows (immediate rapid regression) and macro-windows (creeping long-term drift) concurrently.
 - **Markov Tool Transition Modeling**: Builds empirical transition matrices $P(T_j \mid T_i)$ to identify novel paths, cycle intensity, and probability perturbations.
-- **Automated Circuit Breaker & Rollback Webhook**: Trips automatically when consecutive critical regressions occur, firing an automated fallback webhook to switch model checkpoints or engage safety proxies.
+- **Automated Circuit Breaker and Rollback Webhook**: Trips automatically when consecutive critical regressions occur, firing an automated fallback webhook to switch model checkpoints or engage safety proxies.
 - **Visual Trajectory Diff Engine**: Produces step-by-step differential traces comparing observed agent execution against canonical baseline trajectories.
 - **Interactive Directed Tool DAG**: Renders state topology graphs alongside transition heatmaps for intuitive path inspection.
 - **Native Prometheus Exporter**: Exposes OpenMetrics at `GET /metrics` for Grafana, Datadog, and Prometheus Alertmanager integration.

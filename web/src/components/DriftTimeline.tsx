@@ -66,7 +66,7 @@ export const DriftTimeline: React.FC<DriftTimelineProps> = ({
 
   return (
     <div className="bg-sre-900 border border-sre-800 rounded-xl p-5">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div>
           <div className="flex items-center gap-2">
             <LineChart className="w-4 h-4 text-blue-400" />
@@ -79,7 +79,7 @@ export const DriftTimeline: React.FC<DriftTimelineProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 bg-blue-500 inline-block" />
             <span className="text-slate-300">Macro W₁</span>

@@ -46,14 +46,14 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {/* Workflow Select */}
-        <div className="flex items-center gap-2 bg-sre-850 border border-sre-700/60 rounded-lg px-2.5 py-1.5">
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-sre-850 border border-sre-700/60 rounded-lg px-2 sm:px-2.5 py-1.5">
           <span className="text-xs text-slate-400 font-mono">Agent:</span>
           <select
             value={selectedWorkflowId}
             onChange={(e) => onSelectWorkflow(e.target.value)}
-            className="bg-transparent text-sm text-slate-100 font-medium focus:outline-none cursor-pointer"
+            className="bg-transparent text-xs sm:text-sm text-slate-100 font-medium focus:outline-none cursor-pointer max-w-[120px] sm:max-w-none truncate"
           >
             {workflows.map((wf) => (
               <option key={wf.id} value={wf.id} className="bg-sre-900 text-slate-100">
@@ -66,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Circuit Breaker Status */}
         {circuitBreaker && (
           <div
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition ${
+            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-mono transition ${
               isBreakerOpen
                 ? 'bg-rose-950/50 border-rose-700 text-rose-300'
                 : 'bg-sre-850 border-sre-700/60 text-slate-300'
@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* SSE Stream Status */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-sre-800 bg-sre-850/60 text-xs">
+        <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-sre-800 bg-sre-850/60 text-xs">
           <Radio className={`w-3.5 h-3.5 ${sseConnected ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
           <span className={`font-mono ${sseConnected ? 'text-emerald-400' : 'text-slate-400'}`}>
             {sseConnected ? 'LIVE SSE' : 'OFFLINE'}
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Trace Sandbox Button */}
         <button
           onClick={onOpenSandbox}
-          className="flex items-center gap-1.5 bg-sre-800 hover:bg-sre-700 border border-sre-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer"
+          className="flex items-center gap-1.5 bg-sre-800 hover:bg-sre-700 border border-sre-700 text-slate-200 text-xs font-medium px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition cursor-pointer"
           title="Open Ad-Hoc Trace Testing Sandbox"
         >
           <Terminal className="w-3.5 h-3.5 text-emerald-400" />
@@ -111,20 +111,20 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Action Buttons */}
         <button
           onClick={onOpenSimulate}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm cursor-pointer"
+          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition shadow-sm cursor-pointer"
           title="Inject synthetic traffic or drift scenario"
         >
           <Zap className="w-3.5 h-3.5" />
-          <span>Simulate Drift</span>
+          <span>Simulate<span className="hidden md:inline"> Drift</span></span>
         </button>
 
         <button
           onClick={onOpenRecalibrate}
-          className="flex items-center gap-1.5 bg-sre-800 hover:bg-sre-700 border border-sre-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg transition cursor-pointer"
+          className="flex items-center gap-1.5 bg-sre-800 hover:bg-sre-700 border border-sre-700 text-slate-200 text-xs font-medium px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition cursor-pointer"
           title="Recalibrate Golden Baseline profile from recent traces"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>Recalibrate Baseline</span>
+          <span>Recalibrate<span className="hidden md:inline"> Baseline</span></span>
         </button>
       </div>
     </header>

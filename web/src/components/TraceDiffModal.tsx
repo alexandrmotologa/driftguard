@@ -50,7 +50,7 @@ export const TraceDiffModal: React.FC<TraceDiffModalProps> = ({
           )}
 
           {/* Metric Summary Chips */}
-          <div className="grid grid-cols-3 gap-2 bg-sre-850 p-3 rounded-lg border border-sre-800 text-slate-300">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-sre-850 p-3 rounded-lg border border-sre-800 text-slate-300">
             <div>
               <span className="text-slate-500">Total Deviations:</span>{' '}
               <span className={`font-bold ${diff.total_deviations > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
